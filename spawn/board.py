@@ -358,13 +358,27 @@ def handle_callback(data, cq):
             edit(view_project(c, pid) if pid else view_root(c))
         elif act == "b_delproj":
             bd.del_project(c, int(a[0])); edit(view_root(c))
-        # --- deadline / labels: handed to their modules ---
+        # --- deadline (board_cal date+time picker) ---
         elif act == "b_deadline":
-            try:
-                import board_cal
-                edit(board_cal.view_picker(int(a[0])))
-            except Exception:
-                edit(("выбор даты подключается (Этап 2).", _kb([[_btn("‹ карточка", f"b_card:{a[0]}")]])))
+            import board_cal
+            edit(board_cal.view_picker(int(a[0])))
+        elif act == "b_calnav":
+            import board_cal
+            y, m = board_cal.nav_month(a[1], a[2], a[3])
+            edit(board_cal.view_picker(int(a[0]), y, m))
+        elif act == "b_calday":
+            import board_cal
+            edit(board_cal.view_time(int(a[0]), a[1], a[2], a[3]))
+        elif act == "b_caltime":
+            import board_cal
+            bd.set_card_deadline(c, int(a[0]), board_cal.compose_deadline(a[1], a[2]))
+            edit(view_card(c, int(a[0])))
+        elif act == "b_calclr":
+            bd.set_card_deadline(c, int(a[0]), None)
+            edit(view_card(c, int(a[0])))
+        elif act == "b_noop":
+            pass
+        # --- labels: handed to its module ---
         elif act == "b_labels":
             try:
                 import board_labels
