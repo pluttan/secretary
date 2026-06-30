@@ -1,0 +1,9 @@
+{
+  "id": "agent-handoff",
+  "name": "Agent Handoff",
+  "description": "Оркестратор передаёт разговор project-агенту и забирает обратно (поверх SessionBindingService).",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}

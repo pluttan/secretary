@@ -1,0 +1,14 @@
+spool/
+state/
+journal/
+__pycache__/
+*.pyc
+*.bak
+*.bak-*
+
+# personal config — owner name, telegram chat id, etc. (template: config.example.json)
+config.json
+
+# vendored deps must not be committed
+plugins/*/node_modules/
+node_modules/

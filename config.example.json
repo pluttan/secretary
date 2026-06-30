@@ -1,0 +1,5 @@
+{
+  "telegram_chat_id": "YOUR_TELEGRAM_CHAT_ID",
+  "owner_name": "owner",
+  "secrets_dir": "~/.secrets"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "openclaw-agent-handoff",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "OpenClaw plugin: orchestrator hands a conversation to a project-agent and takes it back (over SessionBindingService).",
+  "openclaw": {
+    "extensions": ["./index.ts"]
+  }
+}
