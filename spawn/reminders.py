@@ -14,10 +14,10 @@
 # stdlib only (sqlite3). Author: pluttan
 
 import json
-import shlex
 import sqlite3
 import subprocess
 import sys
+from urllib.parse import quote
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -107,8 +107,7 @@ def _tg(method, **fields):
         return None
     cfg = [f'url = "https://api.telegram.org/bot{token}/{method}"']
     for k, v in fields.items():
-        vs = str(v).replace("\\", "\\\\").replace('"', '\\"')   # curl-config: escape \ and " inside "..."
-        cfg.append(f'data-urlencode = "{k}={vs}"')
+        cfg.append(f'data = "{k}={quote(str(v), safe="")}"')   # urlencode ourselves → safe one-line config
     payload = "\n".join(cfg) + "\n"
     try:
         r = subprocess.run(
