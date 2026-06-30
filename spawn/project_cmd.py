@@ -192,6 +192,30 @@ def _money_targets(t):
             for e in data.get("tracks", {}).get("edges", [])}
 
 
+def _write_dod(name, text):
+    """Upsert a `## <name>` section in dod.md with the owner's definition-of-done.
+    Self-onboarding: the owner sets DoD by command, it is never hard-coded."""
+    import re
+    dod = Path.home() / "secretary" / "state" / "dod.md"
+    dod.parent.mkdir(parents=True, exist_ok=True)
+    body = dod.read_text(encoding="utf-8") if dod.exists() else "# DoD проектов (для M6 last-mile)\n"
+    header = f"## {name}"
+    block = f"{header}\n{text.strip()}\n"
+    pat = re.compile(rf"(?m)^{re.escape(header)}\s*$.*?(?=^## |\Z)", re.S)
+    body = pat.sub(block + "\n", body) if pat.search(body) else body.rstrip() + "\n\n" + block
+    dod.write_text(body if body.endswith("\n") else body + "\n", encoding="utf-8")
+
+
+def cmd_dod(a):
+    text = " ".join(a.text).strip() if isinstance(a.text, list) else str(a.text).strip()
+    if not text:
+        out({"ok": False, "error": "empty_dod", "hint": "что значит «довёл» по проекту? dod <имя> <текст>"})
+        return
+    _write_dod(a.name, text)
+    out({"ok": True, "name": a.name, "dod": text,
+         "note": "DoD записан — last-mile теперь предъявит ровно ЕГО, а не абстракцию"})
+
+
 def cmd_prioritize(_):
     """Из ACTIVE советует фокус. Эвристика прозрачна: wip_lock > есть money_target > имя."""
     t = tw()
@@ -221,6 +245,7 @@ def main():
     p = sub.add_parser("money"); p.add_argument("name"); p.add_argument("amount", type=float); p.add_argument("--currency", default="RUB"); p.set_defaults(fn=cmd_money)
     p = sub.add_parser("done"); p.add_argument("name"); p.set_defaults(fn=cmd_done)
     p = sub.add_parser("freeze"); p.add_argument("name"); p.set_defaults(fn=cmd_freeze)
+    p = sub.add_parser("dod"); p.add_argument("name"); p.add_argument("text", nargs="+"); p.set_defaults(fn=cmd_dod)
     sub.add_parser("prioritize").set_defaults(fn=cmd_prioritize)
     a = ap.parse_args()
     # Любой посторонний stdout из twenty_client/wip_gate (напр. WARN про дубликат
