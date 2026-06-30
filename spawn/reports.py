@@ -46,22 +46,37 @@ def git_dates(host, path, days=30):
         return None
 
 
+def graph_str(counter, today, days=30):
+    """30-day commit squares: · none, ▪ light (1), ▣ mid (2-3), █ heavy (4+)."""
+    base = datetime.strptime(today, "%Y-%m-%d")
+    out = ""
+    for i in range(days - 1, -1, -1):
+        n = counter.get((base - timedelta(days=i)).strftime("%Y-%m-%d"), 0)
+        out += "·" if n == 0 else "▪" if n == 1 else "▣" if n <= 3 else "█"
+    return out
+
+
 def discover():
-    """Кандидаты-репо: pcomp ~/work,~/pr + мак ~/pr/pets."""
+    """Кандидаты-репо: pcomp ~/work,~/pr + любые ~/*-репо; мак ~/pr/<cat>/* (все категории)."""
     cands = []
     for base in (Path.home() / "work", Path.home() / "pr"):
         if base.is_dir():
             for g in base.glob("*/.git"):
                 cands.append(str(g.parent))
+    for g in Path.home().glob("*/.git"):           # топ-уровень pcomp (typst-studio, portfolio-work, …)
+        nm = g.parent.name
+        if nm.startswith(".") or nm.endswith(("-build", "-docker")):
+            continue                               # инфра/форки/dotfiles — не проекты владельца
+        cands.append(str(g.parent))
     try:
-        out = subprocess.run(["ssh", "-o", "ConnectTimeout=8", "macair", "ls -d ~/pr/pets/*/.git 2>/dev/null"],
+        out = subprocess.run(["ssh", "-o", "ConnectTimeout=8", "macair", "ls -d ~/pr/*/*/.git 2>/dev/null"],
                              capture_output=True, text=True, timeout=20).stdout
         for l in out.splitlines():
             if l.strip().endswith("/.git"):
                 cands.append("mac:" + l.strip()[:-5])
     except Exception:
         pass
-    return cands
+    return sorted(set(cands))
 
 
 def main():
@@ -84,6 +99,7 @@ def main():
             "commits_7d": sum(v for d, v in c.items() if d >= (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")),
             "today": c.get(today, 0),
             "active_days_30d": len(c),
+            "graph": graph_str(c, today),
         }
     print(json.dumps({"ok": True, "today": today, "projects": rep,
                       "note": "Сухие цифры git-активности (метаданные, не код). Шики: краткая сводка «за неделю по X — N коммитов, M активных дней». Граф квадратиков = active_days."}, ensure_ascii=False, indent=2))

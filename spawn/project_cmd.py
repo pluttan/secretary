@@ -216,6 +216,28 @@ def cmd_dod(a):
          "note": "DoD записан — last-mile теперь предъявит ровно ЕГО, а не абстракцию"})
 
 
+def _write_repos(name, path):
+    """Upsert a `<project>: [mac:]<path>` line in repos.md. Self-onboarding for the git graph."""
+    import re
+    repos = Path.home() / "secretary" / "state" / "repos.md"
+    repos.parent.mkdir(parents=True, exist_ok=True)
+    body = repos.read_text(encoding="utf-8") if repos.exists() else \
+        "# Карта проект→репо (для reports git-граф)\n# строки: `имя: [mac:]<путь>` (mac: = репо на маке через ssh)\n\n"
+    line = f"{name}: {path}"
+    pat = re.compile(rf"(?m)^{re.escape(name)}\s*:.*$")
+    body = pat.sub(line, body) if pat.search(body) else body.rstrip() + "\n" + line + "\n"
+    repos.write_text(body if body.endswith("\n") else body + "\n", encoding="utf-8")
+
+
+def cmd_repos(a):
+    if not a.path.strip():
+        out({"ok": False, "error": "empty_path", "hint": "repos <имя> <[mac:]путь к репо>"})
+        return
+    _write_repos(a.name, a.path.strip())
+    out({"ok": True, "name": a.name, "repo": a.path.strip(),
+         "note": "карта обновлена — reports посчитает git-граф по этому репо"})
+
+
 def cmd_prioritize(_):
     """Из ACTIVE советует фокус. Эвристика прозрачна: wip_lock > есть money_target > имя."""
     t = tw()
@@ -246,6 +268,7 @@ def main():
     p = sub.add_parser("done"); p.add_argument("name"); p.set_defaults(fn=cmd_done)
     p = sub.add_parser("freeze"); p.add_argument("name"); p.set_defaults(fn=cmd_freeze)
     p = sub.add_parser("dod"); p.add_argument("name"); p.add_argument("text", nargs="+"); p.set_defaults(fn=cmd_dod)
+    p = sub.add_parser("repos"); p.add_argument("name"); p.add_argument("path"); p.set_defaults(fn=cmd_repos)
     sub.add_parser("prioritize").set_defaults(fn=cmd_prioritize)
     a = ap.parse_args()
     # Любой посторонний stdout из twenty_client/wip_gate (напр. WARN про дубликат
