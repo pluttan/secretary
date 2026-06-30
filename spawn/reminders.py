@@ -101,7 +101,9 @@ def _tg(method, **fields):
     """Call a telegram bot API method via de-german. Token via curl-config on stdin (not argv).
     Returns parsed JSON, or None on failure."""
     try:
-        token = (SECRETS / "telegram-bot-token").read_text().strip()
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import secret
+        token = secret.get("telegram-bot-token")
     except Exception as e:
         print(f"[rem] no token: {type(e).__name__}", file=sys.stderr)
         return None

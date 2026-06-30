@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reports
 import redact
+import secret
 
 SECRETARY = Path.home() / "secretary"
 _CFG = {}
@@ -96,7 +97,7 @@ def draw_year(counter, out_path):
 
 def _send_photo(path, caption):
     try:
-        token = (SECRETS / "telegram-bot-token").read_text().strip()
+        token = secret.get("telegram-bot-token")
     except Exception:
         return None
     if subprocess.run(["scp", "-q", "-o", "ConnectTimeout=10", str(path), "de-german:/tmp/sy.png"],

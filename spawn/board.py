@@ -20,6 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import board_db as bd
 import redact
+import secret
 
 SECRETARY = Path.home() / "secretary"
 SPAWN = SECRETARY / "spawn"
@@ -81,7 +82,7 @@ def overlay_columns():
 
 def _tg(method, **fields):
     try:
-        token = (SECRETS / "telegram-bot-token").read_text().strip()
+        token = secret.get("telegram-bot-token")
     except Exception:
         return None
     cfg = [f'url = "https://api.telegram.org/bot{token}/{method}"']

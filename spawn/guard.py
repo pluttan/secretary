@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import redact
+import secret
 
 SECRETARY = Path.home() / "secretary"
 STATE = SECRETARY / "state" / "guard.json"
@@ -108,7 +109,7 @@ def check_mac(s):
 # ---------- alerting ----------
 def _tg(text):
     try:
-        token = (SECRETS / "telegram-bot-token").read_text().strip()
+        token = secret.get("telegram-bot-token")
     except Exception:
         return None
     from urllib.parse import quote
