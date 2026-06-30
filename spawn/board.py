@@ -272,16 +272,27 @@ def view_settings(c):
 
 
 def quick_add(title):
-    """Fast capture: drop a card into the loose 'Входящие' board (auto-created)."""
+    """Fast capture: parse macros, drop a card into the loose 'Входящие' board (auto-created)."""
+    import board_macro
+    p = board_macro.parse(title)
     with bd.conn() as c:
         inbox = next((bid for bid, t in bd.boards(c, None) if t == INBOX_BOARD), None)
         if not inbox:
             inbox = bd.add_board(c, INBOX_BOARD, None)
         cols = bd.columns(c, inbox)
         col = cols[0][0] if cols else bd.add_column(c, inbox, "новое")
-        card = bd.add_card(c, col, title.strip())
+        card = bd.add_card(c, col, p["title"] or title.strip())
+        if p["priority"]:
+            bd.set_card_priority(c, card, p["priority"])
+        if p["deadline"]:
+            bd.set_card_deadline(c, card, p["deadline"])
+        if p["description"]:
+            bd.set_card_description(c, card, p["description"])
+        for lname in p["labels"]:
+            lid = next((l[0] for l in bd.labels(c) if l[1] == lname), None) or bd.add_label(c, lname)
+            bd.toggle_card_label(c, card, lid)
         c.commit()
-        return {"ok": True, "card": card, "board": inbox}
+        return {"ok": True, "card": card, "board": inbox, "parsed": p}
 
 
 # ==========================
