@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import board_db as bd
+import redact
 
 SECRETARY = Path.home() / "secretary"
 SPAWN = SECRETARY / "spawn"
@@ -85,6 +86,8 @@ def _tg(method, **fields):
         return None
     cfg = [f'url = "https://api.telegram.org/bot{token}/{method}"']
     for k, v in fields.items():
+        if k in ("text", "caption"):
+            v = redact.redact(v)
         cfg.append(f'data = "{k}={quote(str(v), safe="")}"')
     try:
         r = subprocess.run(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", "de-german",

@@ -105,8 +105,16 @@ def _tg(method, **fields):
     except Exception as e:
         print(f"[rem] no token: {type(e).__name__}", file=sys.stderr)
         return None
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import redact
+        _red = redact.redact
+    except Exception:
+        _red = lambda x: x
     cfg = [f'url = "https://api.telegram.org/bot{token}/{method}"']
     for k, v in fields.items():
+        if k in ("text", "caption"):
+            v = _red(v)
         cfg.append(f'data = "{k}={quote(str(v), safe="")}"')   # urlencode ourselves → safe one-line config
     payload = "\n".join(cfg) + "\n"
     try:

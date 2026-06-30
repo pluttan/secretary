@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import reports
+import redact
 
 SECRETARY = Path.home() / "secretary"
 _CFG = {}
@@ -103,7 +104,7 @@ def _send_photo(path, caption):
         return None
     url = f"https://api.telegram.org/bot{token}/sendPhoto"
     cmd = (f"curl -s --max-time 30 -F chat_id={CHAT_ID} "
-           f"--form-string caption={json.dumps(caption, ensure_ascii=False)} "
+           f"--form-string caption={json.dumps(redact.redact(caption), ensure_ascii=False)} "
            f"-F photo=@/tmp/sy.png '{url}'; rm -f /tmp/sy.png")
     try:
         r = subprocess.run(["ssh", "-o", "ConnectTimeout=10", "de-german", cmd],
