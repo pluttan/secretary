@@ -66,6 +66,9 @@ def _migrate(c):
     bcols = {r[1] for r in c.execute("PRAGMA table_info(boards)")}
     if "project_id" not in bcols:
         c.execute("ALTER TABLE boards ADD COLUMN project_id INTEGER")
+    ccols = {r[1] for r in c.execute("PRAGMA table_info(columns)")}
+    if "color" not in ccols:
+        c.execute("ALTER TABLE columns ADD COLUMN color INTEGER DEFAULT 0")
     c.commit()
 
 

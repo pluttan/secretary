@@ -33,6 +33,7 @@ CHAT_ID = str(_CFG.get("telegram_chat_id", ""))
 SECRETS = Path(_CFG.get("secrets_dir", "~/.secrets")).expanduser()
 
 OVERLAY = "Секретарь"
+INBOX_BOARD = "Входящие"
 PRIO_MARK = {0: "", 1: "▽", 2: "◇", 3: "△", 4: "‼"}
 RECUR = ["", "ежедневно", "еженедельно", "ежемесячно", "ежегодно"]
 
@@ -124,7 +125,8 @@ def view_root(c):
         rows.append([_btn(f"▣ {title} ({nb})", f"b_proj:{pid}")])
     for bid, title in bd.boards(c, None):                     # boards not in any project
         rows.append([_btn(f"▦ {title}", f"b_brd:{bid}")])
-    rows.append([_btn("▤ все задачи", "b_show:week"), _btn("🔍 поиск", "b_search")])
+    rows.append([_btn("▤ все задачи", "b_show:week"), _btn("🔍 поиск", "b_search"),
+                 _btn("⚙", "b_settings")])
     rows.append([_btn("⊕ проект", "b_addproj"), _btn("⊕ доска", "b_addbrd:0")])
     return text, _kb(rows)
 
@@ -173,6 +175,8 @@ def view_column(c, col):
     bid = bd.col_board(c, col)
     lines = [f"▌ {bd.col_title(c, col)}  ·  {bd.board_title(c, bid)}\n"]
     cards_ = bd.cards(c, col)
+    if bd.get_setting(c, "hide_completed", "false") == "true":
+        cards_ = [x for x in cards_ if not x[2]]
     if not cards_:
         lines.append("   (пусто)")
     rows = []
@@ -256,6 +260,28 @@ def view_move(c, cid):
             for col_id, ctitle, _c in bd.columns(c, bid) if col_id != cd['column_id']]
     rows.append([_btn("‹ карточка", f"b_card:{cid}")])
     return "куда перенести карточку?", _kb(rows)
+
+
+def view_settings(c):
+    hide = bd.get_setting(c, "hide_completed", "false") == "true"
+    rows = [
+        [_btn(f"{'☑' if hide else '☐'} скрывать выполненные", "b_togset:hide_completed")],
+        [_btn("‹ доски", "b_root")],
+    ]
+    return "⚙ настройки доски:", _kb(rows)
+
+
+def quick_add(title):
+    """Fast capture: drop a card into the loose 'Входящие' board (auto-created)."""
+    with bd.conn() as c:
+        inbox = next((bid for bid, t in bd.boards(c, None) if t == INBOX_BOARD), None)
+        if not inbox:
+            inbox = bd.add_board(c, INBOX_BOARD, None)
+        cols = bd.columns(c, inbox)
+        col = cols[0][0] if cols else bd.add_column(c, inbox, "новое")
+        card = bd.add_card(c, col, title.strip())
+        c.commit()
+        return {"ok": True, "card": card, "board": inbox}
 
 
 # ==========================
@@ -358,6 +384,11 @@ def handle_callback(data, cq):
         elif act == "b_search":
             _set_pending("b_search", "")
             edit(("пришли слово для поиска по всем задачам.", _kb([[_btn("‹ доски", "b_root")]])))
+        elif act == "b_settings":
+            edit(view_settings(c))
+        elif act == "b_togset":
+            cur = bd.get_setting(c, a[0], "false")
+            bd.set_setting(c, a[0], "false" if cur == "true" else "true"); edit(view_settings(c))
         # --- card actions ---
         elif act == "b_toggle":
             bd.toggle_card(c, int(a[0])); edit(view_card(c, int(a[0])))
@@ -462,6 +493,8 @@ def main():
         print(render_all()); return
     if a and a[0] == "addtitle" and len(a) >= 2:
         print(json.dumps(apply_pending(" ".join(a[1:])), ensure_ascii=False)); return
+    if a and a[0] == "quick" and len(a) >= 2:
+        print(json.dumps(quick_add(" ".join(a[1:])), ensure_ascii=False)); return
     res = show()
     ok = bool(res and res.get("ok"))
     print(json.dumps({"ok": ok, "sent": ok, "msg_id": (res or {}).get("result", {}).get("message_id")},
