@@ -157,7 +157,7 @@ def poll():
             if not cq:
                 continue
             data = cq.get("data", "")
-            if data.startswith("board_"):                     # board column-switch → board module
+            if data.startswith("b_"):                          # board navigation/CRUD → board module
                 try:
                     sys.path.insert(0, str(Path(__file__).resolve().parent))
                     import board
