@@ -61,6 +61,21 @@ def log_shipped(name):
         pass
 
 
+def _sync_agent_to_stage(name, stage):
+    """Freeze/thaw the project's agent to match the stage: FROZEN/SHIPPED unload it from the
+    gateway registry, ACTIVE/BACKLOG put it back. Best-effort — never breaks the stage command."""
+    try:
+        sys.path.insert(0, str(SPAWN_DIR))
+        import agent_registry as ar  # noqa: E402
+        if stage in ("FROZEN", "SHIPPED"):
+            return ar.freeze_agent(name)
+        if stage in ("ACTIVE", "BACKLOG"):
+            return ar.thaw_agent(name)
+    except Exception as e:
+        return {"agent": f"skip ({type(e).__name__})"}
+    return {}
+
+
 def cmd_status(_):
     t = tw()
     from collections import Counter
@@ -112,7 +127,8 @@ def cmd_stage(a):
     node = t.set_stage(a.name, stage)
     if stage == "SHIPPED":
         log_shipped(a.name)
-    out({"ok": True, "name": a.name, "stage": stage, "id": (node or {}).get("id")})
+    agent = _sync_agent_to_stage(a.name, stage)
+    out({"ok": True, "name": a.name, "stage": stage, "id": (node or {}).get("id"), "agent": agent})
 
 
 def cmd_money(a):
@@ -145,7 +161,8 @@ def cmd_done(a):
         return
     t.set_stage(a.name, "SHIPPED")
     log_shipped(a.name)
-    out({"ok": True, "name": a.name, "stage": "SHIPPED", "note": "довёл — поздравляю, это и есть лекарство"})
+    agent = _sync_agent_to_stage(a.name, "SHIPPED")
+    out({"ok": True, "name": a.name, "stage": "SHIPPED", "agent": agent, "note": "довёл — поздравляю, это и есть лекарство"})
 
 
 def cmd_freeze(a):
@@ -155,7 +172,8 @@ def cmd_freeze(a):
              "hint": f"Нет проекта '{a.name}'. freeze только по существующему."})
         return
     t.set_stage(a.name, "FROZEN")
-    out({"ok": True, "name": a.name, "stage": "FROZEN"})
+    agent = _sync_agent_to_stage(a.name, "FROZEN")
+    out({"ok": True, "name": a.name, "stage": "FROZEN", "agent": agent})
 
 
 def _money_targets(t):
