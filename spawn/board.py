@@ -1,14 +1,16 @@
 #!/usr/bin/env python3.13
 # board.py — the kanban OVERLAY over all the secretary's mechanisms (yougileTgBot-style board,
-# but aggregating, not a new store). Pulls cards from the existing engines into meaning columns
-# and renders one board snapshot to Telegram. Inline column navigation is the next layer.
+# aggregating not storing). Pulls cards from the existing engines into meaning columns and shows
+# ONE column at a time with an inline column-switcher row; tapping a column edits the message to
+# that column (kanban paging). Column-switch callbacks are routed in by the shared reminders poll
+# (one getUpdates), so there is no second telegram poller.
 #
-# Columns: сегодня (routines pending + reminders + focus) · активные (Twenty ACTIVE + next step) ·
+# Columns: сегодня (focus + routines pending + reminders) · активные (Twenty ACTIVE + next step) ·
 # последняя миля (last-mile near-miss) · заморожено (Twenty FROZEN + frozen agents).
 # Telegram via de-german (pcomp→api is DPI-cut), token via curl-config on stdin.
 #
-#   board.py show     — build + send the board to Telegram
-#   board.py --dry    — print the board text, do not send
+#   board.py show     — build + send the board (first column + switcher)
+#   board.py --dry    — print all columns as text, do not send
 # stdlib only. Author: pluttan
 
 import json
@@ -20,7 +22,6 @@ from pathlib import Path
 HOME = Path.home()
 SECRETARY = HOME / "secretary"
 SPAWN = SECRETARY / "spawn"
-SECRETARYD = SECRETARY / "secretaryd"
 
 _CFG = {}
 try:
@@ -29,6 +30,9 @@ except Exception:
     pass
 CHAT_ID = str(_CFG.get("telegram_chat_id", ""))
 SECRETS = Path(_CFG.get("secrets_dir", "~/.secrets")).expanduser()
+
+COL_ORDER = ["сегодня", "активные", "последняя миля", "заморожено"]
+COL_SHORT = {"сегодня": "сегодня", "активные": "активные", "последняя миля": "финиш", "заморожено": "заморож"}
 
 
 def run_json(script, *args):
@@ -51,8 +55,6 @@ def _next_step(name):
 
 def collect():
     cols = {}
-
-    # --- сегодня: фокус + рутины не сделано + напоминания ---
     prio = run_json("project_cmd.py", "prioritize")
     routines = run_json("routines.py", "pending")
     reminders = run_json("reminders.py", "list")
@@ -65,7 +67,6 @@ def collect():
         today.append(f"⏰ {r['due'][11:16]} {r['text']}")
     cols["сегодня"] = today
 
-    # --- проекты по стадиям (Twenty) ---
     st = run_json("project_cmd.py", "status")
     tracks = (st or {}).get("tracks", [])
     active, frozen = [], []
@@ -78,23 +79,30 @@ def collect():
             frozen.append(t["name"])
     cols["активные"] = active
 
-    # --- последняя миля ---
     lm = run_json("lastmile.py")
     cols["последняя миля"] = [c["name"] for c in (lm or {}).get("candidates", [])]
 
-    # --- заморожено: FROZEN-проекты + спящие агенты ---
     ag = run_json("agent_registry.py", "list")
     cols["заморожено"] = frozen + [f"агент: {a}" for a in (ag or {}).get("frozen", [])]
-
     return cols
 
 
-def render(cols):
-    blocks = []
-    for name, cards in cols.items():
-        body = "\n".join(f"   {c}" for c in cards) if cards else "   —"
-        blocks.append(f"▌ {name.upper()}\n{body}")
+def render_column(col, cols):
+    cards = cols.get(col, [])
+    body = "\n".join(f"   {c}" for c in cards) if cards else "   —"
+    return f"📋 доска · {col.upper()} ({len(cards)})\n\n{body}"
+
+
+def render_all(cols):
+    blocks = [f"▌ {n.upper()}\n" + ("\n".join(f"   {c}" for c in cards) if cards else "   —")
+              for n, cards in cols.items()]
     return "📋 доска секретаря\n\n" + "\n\n".join(blocks)
+
+
+def keyboard(current, cols):
+    row = [{"text": ("● " if c == current else "") + COL_SHORT.get(c, c),
+            "callback_data": f"board_col:{c}"} for c in COL_ORDER if c in cols]
+    return json.dumps({"inline_keyboard": [row]}, ensure_ascii=False)
 
 
 def _tg(method, **fields):
@@ -104,7 +112,7 @@ def _tg(method, **fields):
         return None
     cfg = [f'url = "https://api.telegram.org/bot{token}/{method}"']
     for k, v in fields.items():
-        cfg.append(f'data = "{k}={quote(str(v), safe="")}"')   # urlencode ourselves → safe one-line config
+        cfg.append(f'data = "{k}={quote(str(v), safe="")}"')
     try:
         r = subprocess.run(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", "de-german",
                             "curl -s --max-time 20 -K -"],
@@ -115,12 +123,29 @@ def _tg(method, **fields):
         return None
 
 
+def show():
+    cols = collect()
+    first = next((c for c in COL_ORDER if c in cols), COL_ORDER[0])
+    return _tg("sendMessage", chat_id=CHAT_ID, text=render_column(first, cols),
+               reply_markup=keyboard(first, cols))
+
+
+def handle_callback(data, cq):
+    """Called by the shared reminders poll for board_col:<name> presses → edit message to that column."""
+    _, _, col = data.partition(":")
+    cols = collect()
+    if col not in cols:
+        return False
+    msg = cq.get("message", {})
+    _tg("editMessageText", chat_id=msg.get("chat", {}).get("id"), message_id=msg.get("message_id"),
+        text=render_column(col, cols), reply_markup=keyboard(col, cols))
+    return True
+
+
 def main():
-    dry = "--dry" in sys.argv
-    text = render(collect())
-    if dry:
-        print(text); return
-    res = _tg("sendMessage", chat_id=CHAT_ID, text=text)
+    if "--dry" in sys.argv:
+        print(render_all(collect())); return
+    res = show()
     ok = bool(res and res.get("ok"))
     print(json.dumps({"ok": ok, "sent": ok, "msg_id": (res or {}).get("result", {}).get("message_id")},
                      ensure_ascii=False))

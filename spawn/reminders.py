@@ -157,6 +157,15 @@ def poll():
             if not cq:
                 continue
             data = cq.get("data", "")
+            if data.startswith("board_"):                     # board column-switch → board module
+                try:
+                    sys.path.insert(0, str(Path(__file__).resolve().parent))
+                    import board
+                    board.handle_callback(data, cq)
+                    _tg("answerCallbackQuery", callback_query_id=cq["id"])
+                except Exception as e:
+                    print(f"[rem] board cb: {type(e).__name__}: {e}", file=sys.stderr)
+                continue
             if not data.startswith("rem_"):
                 continue
             action, _, rid = data.partition(":")
