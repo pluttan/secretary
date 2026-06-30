@@ -46,15 +46,16 @@ def morning():
 
 
 def evening():
-    diary = run_json("diary.py", "--save") if False else None  # черновик не сохраняем тут, Шики решит
     plan = run_json("planner.py", "--save")
     reward = run_json("rewardgate.py")
+    lastmile = run_json("lastmile.py")
     return {
         "kind": "evening",
         "tomorrow_plan_saved": (plan or {}).get("saved"),
         "need_step": (plan or {}).get("need_step", []),
         "reward_earned": (reward or {}).get("reward_earned"),
-        "note": "Шики: вечерний разбор. Предложи дневник (diary.py --save → дополни '## заметка владельца'), покажи план на завтра (need_step → вытяни шаги), отметь доведения. По-доброму, без душнёжа на ночь.",
+        "lastmile_candidates": [c["name"] for c in (lastmile or {}).get("candidates", [])],
+        "note": "Шики: вечерний разбор. Сначала не завис ли на последней миле (last-mile, предъяви DoD/спроси), потом план на завтра (need_step → вытяни шаги), дневник (diary.py --save → '## заметка владельца'), отметь доведения. По-доброму, без душнёжа на ночь.",
     }
 
 
