@@ -86,7 +86,9 @@ def pass_done(now, kind):
 def build_prompt(now, kind, ag):
     wd = WEEKDAYS[now.weekday()]
     if kind == "morning":
+        rp = ag.get("routine_pending") or []
         topics = [
+            f"утренняя рутина не сделано: {', '.join(rp) or 'всё ✓'}",
             f"фокус дня: {ag.get('focus') or '—'}",
             f"просроченные якоря режима: {', '.join(ag.get('overdue_anchors') or []) or 'нет'}",
             f"всплывшие идеи: {', '.join(ag.get('due_ideas') or []) or 'нет'}",
@@ -97,8 +99,12 @@ def build_prompt(now, kind, ag):
     else:
         need = ag.get("need_step") or []
         lm = ag.get("lastmile_candidates") or []
+        rp = ag.get("routine_pending") or []
+        streaks = ag.get("streaks") or {}
+        sline = ", ".join(f"{k}:{v}д" for k, v in streaks.items()) or "—"
         topics = [
             f"не завис ли на последней миле: {', '.join(lm) or 'нет застрявших'} (предъяви его DoD или спроси)",
+            f"вечерняя рутина не сделано: {', '.join(rp) or 'всё ✓'} (streak: {sline})",
             f"план на завтра (определить шаги по: {', '.join(need) or 'всё уже есть'})",
             "дневник за день (предложи записать впечатления — diary.py --save, '## заметка владельца')",
             "что довёл сегодня (отметь, поздравь — доведение = лекарство)",

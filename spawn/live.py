@@ -33,15 +33,15 @@ def morning():
     prio = run_json("project_cmd.py", "prioritize")
     anchors = run_json("lifelog.py", "check")
     ideas = run_json("idea.py", "due")
-    lastmile = run_json("lastmile.py")
+    routines = run_json("routines.py", "pending", "morning")
     return {
         "kind": "morning",
         "focus": (prio or {}).get("focus"),
         "wip": (portfolio or {}).get("wip", {}).get("available"),
         "overdue_anchors": (anchors or {}).get("overdue_anchors", []),
         "due_ideas": (ideas or {}).get("due", []),
-        "lastmile_candidates": [c["name"] for c in (lastmile or {}).get("candidates", [])],
-        "note": "Шики: бодрое утро + расклад. Фокус дня, просроченные якоря режима (мягко), всплывшие идеи, что висит на последней миле. Не вали всё сразу — 2-3 главного.",
+        "routine_pending": [t["title"] for t in (routines or {}).get("pending", [])],
+        "note": "Шики: бодрое утро + расклад. Утренняя рутина (что не сделано), фокус дня, просроченные якоря режима (мягко), всплывшие идеи. Не вали всё сразу — 2-3 главного.",
     }
 
 
@@ -49,13 +49,17 @@ def evening():
     plan = run_json("planner.py", "--save")
     reward = run_json("rewardgate.py")
     lastmile = run_json("lastmile.py")
+    routines = run_json("routines.py", "pending", "evening")
+    rstats = run_json("routines.py", "stats", "7")
     return {
         "kind": "evening",
         "tomorrow_plan_saved": (plan or {}).get("saved"),
         "need_step": (plan or {}).get("need_step", []),
         "reward_earned": (reward or {}).get("reward_earned"),
         "lastmile_candidates": [c["name"] for c in (lastmile or {}).get("candidates", [])],
-        "note": "Шики: вечерний разбор. Сначала не завис ли на последней миле (last-mile, предъяви DoD/спроси), потом план на завтра (need_step → вытяни шаги), дневник (diary.py --save → '## заметка владельца'), отметь доведения. По-доброму, без душнёжа на ночь.",
+        "routine_pending": [t["title"] for t in (routines or {}).get("pending", [])],
+        "streaks": (rstats or {}).get("streaks", {}),
+        "note": "Шики: вечерний разбор. Не завис ли на последней миле (предъяви DoD/спроси), вечерняя рутина (что не сделано + streak), план на завтра (вытяни шаги), дневник (diary.py --save), доведения. По-доброму, без душнёжа на ночь.",
     }
 
 
