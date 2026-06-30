@@ -34,6 +34,7 @@ SECRETS = Path(_CFG.get("secrets_dir", "~/.secrets")).expanduser()
 
 OVERLAY = "Секретарь"
 PRIO_MARK = {0: "", 1: "▽", 2: "◇", 3: "△", 4: "‼"}
+RECUR = ["", "ежедневно", "еженедельно", "ежемесячно", "ежегодно"]
 
 
 # ==========================
@@ -123,6 +124,7 @@ def view_root(c):
         rows.append([_btn(f"▣ {title} ({nb})", f"b_proj:{pid}")])
     for bid, title in bd.boards(c, None):                     # boards not in any project
         rows.append([_btn(f"▦ {title}", f"b_brd:{bid}")])
+    rows.append([_btn("▤ все задачи", "b_show:week"), _btn("🔍 поиск", "b_search")])
     rows.append([_btn("⊕ проект", "b_addproj"), _btn("⊕ доска", "b_addbrd:0")])
     return text, _kb(rows)
 
@@ -208,11 +210,17 @@ def view_card(c, cid):
         [_btn("⏱ дедлайн", f"b_deadline:{cid}"), _btn("◎ метки", f"b_labels:{cid}")],
         [_btn(f"☑ подзадачи ({sdone}/{len(subs)})", f"b_subs:{cid}"),
          _btn("✎ описание", f"b_desc:{cid}")],
-        [_btn("✎ имя", f"b_editcard:{cid}"), _btn("→ перенести", f"b_movemenu:{cid}")],
-        [_btn("⌂ в архив", f"b_arch:{cid}"), _btn("🗑 удалить", f"b_delcard:{cid}")],
-        [_btn("‹ колонка", f"b_col:{cd['column_id']}")],
+        [_btn("↻ повтор", f"b_recur:{cid}"), _btn("✎ имя", f"b_editcard:{cid}")],
+        [_btn("→ перенести", f"b_movemenu:{cid}"), _btn("⌂ в архив", f"b_arch:{cid}")],
+        [_btn("🗑 удалить", f"b_delcard:{cid}"), _btn("‹ колонка", f"b_col:{cd['column_id']}")],
     ]
     return "\n".join(lines), _kb(rows)
+
+
+def view_recurring(c, cid):
+    rows = [[_btn(name or "без повтора", f"b_setrecur:{cid}:{i}")] for i, name in enumerate(RECUR)]
+    rows.append([_btn("‹ карточка", f"b_card:{cid}")])
+    return "↻ повтор карточки:", _kb(rows)
 
 
 def view_priority(c, cid):
@@ -271,6 +279,11 @@ def apply_pending(text):
     PENDING.unlink(missing_ok=True)
     text = text.strip()
     with bd.conn() as c:
+        if act == "b_search":                                  # search → send results as new message
+            import board_showall
+            tk = board_showall.view_search(c, text)
+            _tg("sendMessage", chat_id=CHAT_ID, text=tk[0], reply_markup=tk[1])
+            return {"ok": True, "search": text}
         if act == "b_addproj":
             return {"ok": True, "project": bd.add_project(c, text)}
         if act == "b_addbrd":
@@ -331,10 +344,20 @@ def handle_callback(data, cq):
             edit(view_card(c, int(a[0])))
         elif act == "b_prio":
             edit(view_priority(c, int(a[0])))
+        elif act == "b_recur":
+            edit(view_recurring(c, int(a[0])))
+        elif act == "b_setrecur":
+            bd.set_card_recurring(c, int(a[0]), RECUR[int(a[1])]); edit(view_card(c, int(a[0])))
         elif act == "b_subs":
             edit(view_subtasks(c, int(a[0])))
         elif act == "b_movemenu":
             edit(view_move(c, int(a[0])))
+        elif act == "b_show":
+            import board_showall
+            edit(board_showall.view_showall(c, a[0]))
+        elif act == "b_search":
+            _set_pending("b_search", "")
+            edit(("пришли слово для поиска по всем задачам.", _kb([[_btn("‹ доски", "b_root")]])))
         # --- card actions ---
         elif act == "b_toggle":
             bd.toggle_card(c, int(a[0])); edit(view_card(c, int(a[0])))
