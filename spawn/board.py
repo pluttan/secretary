@@ -283,7 +283,10 @@ def apply_pending(text):
         if act == "b_addsub":
             return {"ok": True, "subtask": bd.add_subtask(c, int(arg), text)}
         if act == "b_addlabel":
-            return {"ok": True, "label": bd.add_label(c, text)}
+            lid = bd.add_label(c, text)
+            if arg:                                            # created from a card → auto-attach
+                bd.toggle_card_label(c, int(arg), lid)
+            return {"ok": True, "label": lid}
         if act == "b_editcard":
             bd.set_card_title(c, int(arg), text); return {"ok": True}
         if act == "b_desc":
@@ -378,13 +381,19 @@ def handle_callback(data, cq):
             edit(view_card(c, int(a[0])))
         elif act == "b_noop":
             pass
-        # --- labels: handed to its module ---
+        # --- labels (board_labels) ---
         elif act == "b_labels":
-            try:
-                import board_labels
-                edit(board_labels.view_labels(c, int(a[0])))
-            except Exception:
-                edit(("метки подключаются (Этап 4).", _kb([[_btn("‹ карточка", f"b_card:{a[0]}")]])))
+            import board_labels
+            edit(board_labels.view_labels(c, int(a[0])))
+        elif act == "b_lbtog":
+            import board_labels
+            bd.toggle_card_label(c, int(a[0]), int(a[1])); edit(board_labels.view_labels(c, int(a[0])))
+        elif act == "b_lbdel":
+            import board_labels
+            bd.del_label(c, int(a[0])); edit(board_labels.view_labels(c, int(a[1])))
+        elif act == "b_addlabelc":
+            _set_pending("b_addlabel", a[0])
+            edit((f"пришли название метки одним сообщением.", _kb([[_btn("‹ отмена", f"b_labels:{a[0]}")]])))
         # --- pending text inputs ---
         elif act in _KIND:
             _set_pending(act, arg)
