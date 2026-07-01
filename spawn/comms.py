@@ -20,8 +20,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import redact
 
 SECRETARY = Path.home() / "secretary"
-EXPORT = Path.home() / "tg-export" / "export"
-AUTHORS = Path.home() / "tg-export" / "authors.json"
+DATA = SECRETARY / "state" / "comms_data"          # isolated WORK store (never the personal tg)
+EXPORT = DATA
+AUTHORS = DATA / "authors.json"
 
 _CFG = {}
 try:

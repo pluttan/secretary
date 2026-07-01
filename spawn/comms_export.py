@@ -12,14 +12,17 @@ from pathlib import Path
 
 TGEXPORT = Path.home() / "tg-export"
 sys.path.insert(0, str(TGEXPORT))
-import config                                                  # api_id / api_hash / phone
+import config                                                  # api_id / api_hash (app creds only)
 from telethon import TelegramClient
 
-EXPORT = TGEXPORT / "export"
-SESSION = str(TGEXPORT / "export_session")
-AUTHORS = TGEXPORT / "authors.json"
-CKPT = Path.home() / "secretary" / "state" / "comms_export.json"
-FIRST_LIMIT = 300                                              # recent window on first touch of a dialog
+# Isolated WORK store — NOT the personal ~/tg-export. Separate session so comms only ever sees
+# the work telegram; the owner's personal account is never touched.
+DATA = Path.home() / "secretary" / "state" / "comms_data"
+EXPORT = DATA
+SESSION = str(DATA / "work_session")
+AUTHORS = DATA / "authors.json"
+CKPT = DATA / "checkpoint.json"
+FIRST_LIMIT = 300                                             # recent window on first touch of a dialog
 
 
 def _slug(s):
@@ -98,7 +101,21 @@ async def export_all():
     return {"me": me.id, "stats": stats}
 
 
+async def _login():
+    DATA.mkdir(parents=True, exist_ok=True)
+    client = TelegramClient(SESSION, config.api_id, config.api_hash)
+    await client.start()                                      # prompts for phone + code interactively
+    me = await client.get_me()
+    print(f"залогинен РАБОЧИЙ телеграм: id={me.id} @{me.username or '—'} {me.phone}")
+    print("теперь можно включать автоэкспорт: systemctl --user enable --now comms-export.timer")
+    await client.disconnect()
+
+
 def main():
+    a = sys.argv[1:]
+    if a and a[0] == "login":                                # owner runs this once to log in the work account
+        asyncio.run(_login())
+        return
     res = asyncio.run(export_all())
     stats = res["stats"]
     print(json.dumps({"ok": True, "me_id": res["me"],
