@@ -127,6 +127,14 @@ def main():
         print(json.dumps([{"when": dt.isoformat(), "what": label, "src": src}
                           for dt, label, src in collect()], ensure_ascii=False))
         return
+    if a and a[0] == "today":
+        import json
+        now = _now()
+        today = [{"when": dt.strftime("%H:%M"), "what": label, "src": src}
+                 for dt, label, src in collect()
+                 if dt.date() == now.date() and dt >= now - timedelta(hours=2)]
+        print(json.dumps({"today": today}, ensure_ascii=False))
+        return
     print(render())
 
 

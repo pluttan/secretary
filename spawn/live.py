@@ -34,14 +34,18 @@ def morning():
     anchors = run_json("lifelog.py", "check")
     ideas = run_json("idea.py", "due")
     routines = run_json("routines.py", "pending", "morning")
+    day_anchors = run_json("anchors.py", "today")
     return {
         "kind": "morning",
         "focus": (prio or {}).get("focus"),
         "wip": (portfolio or {}).get("wip", {}).get("available"),
         "overdue_anchors": (anchors or {}).get("overdue_anchors", []),
+        "day_anchors": (day_anchors or {}).get("today", []),
         "due_ideas": (ideas or {}).get("due", []),
         "routine_pending": [t["title"] for t in (routines or {}).get("pending", [])],
-        "note": "Шики: бодрое утро + расклад. Утренняя рутина (что не сделано), фокус дня, просроченные якоря режима (мягко), всплывшие идеи. Не вали всё сразу — 2-3 главного.",
+        "note": "Шики: бодрое утро + расклад. Утренняя рутина (что не сделано), фокус дня, "
+                "якоря дня (пары/дедлайны/напоминания на сегодня из day_anchors), просроченные "
+                "якоря режима (мягко), всплывшие идеи. Не вали всё сразу — 2-3 главного.",
     }
 
 
