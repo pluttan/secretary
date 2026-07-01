@@ -31,7 +31,7 @@ _PATTERNS = [
     re.compile(r'\b[A-Fa-f0-9]{64,}\b'),                          # long hex (keys/hashes)
     re.compile(r'\b[A-Za-z0-9+/]{50,}={0,2}\b'),                  # long base64 blob (keys/cookies)
 ]
-_OTP = re.compile(r'(?i)\b(код|code|otp|пароль|password|pin|одноразов\w*)\b(\D{0,20})(\d{4,8})\b')
+_OTP = re.compile(r'(?i)\b(код|code|otp|пароль|password|pin|одноразов\w*)\b(\D{0,30})(\d{4,8})\b')
 
 
 def _secret_values():

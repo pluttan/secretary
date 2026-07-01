@@ -54,6 +54,7 @@ async def export_all():
     client = TelegramClient(SESSION, config.api_id, config.api_hash)
     await client.start(phone=getattr(config, "phone", None))
     me = await client.get_me()
+    (DATA / "meta.json").write_text(json.dumps({"my_id": me.id}, ensure_ascii=False))
     ckpt = _load_ckpt()
     authors = _load_authors()
     stats = []

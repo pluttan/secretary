@@ -29,7 +29,10 @@ try:
     _CFG = json.loads((SECRETARY / "config.json").read_text())
 except Exception:
     pass
-MY_ID = int(_CFG.get("telegram_chat_id", 0) or 0)          # my telegram user id (= chat_id in DM)
+try:
+    MY_ID = int(json.loads((DATA / "meta.json").read_text())["my_id"])   # work account id
+except Exception:
+    MY_ID = int(_CFG.get("telegram_chat_id", 0) or 0)      # fallback: dm chat_id
 
 _AUTHORS = {}
 try:
@@ -59,8 +62,11 @@ GHOST_DAYS = 30
 GHOST_MAX = 400        # cap ghosts to the last ~year, not ancient/bot chats
 
 
+SERVICE = {"Telegram", "id777000"}      # login-code / service notifications — not real contacts
+
+
 def _is_bot(name):
-    return "bot" in (name or "").lower()
+    return "bot" in (name or "").lower() or name in SERVICE
 
 
 def _name(sid):
