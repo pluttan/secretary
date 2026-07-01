@@ -61,6 +61,10 @@ def reminders_():
 def schedule():
     out = []
     try:
+        import os
+        import time
+        if (time.time() - os.path.getmtime(SCHED)) > 60 * 86400:   # stale semester → ignore
+            return out
         text = SCHED.read_text()
     except Exception:
         return out
