@@ -132,6 +132,7 @@ def view_root(c):
     rows.append([_btn("▤ все задачи", "b_show:week"), _btn("🔍 поиск", "b_search"),
                  _btn("⚙", "b_settings")])
     rows.append([_btn("⊕ проект", "b_addproj"), _btn("⊕ доска", "b_addbrd:0")])
+    rows.append([_btn("‹ меню", "m_menu")])
     return text, _kb(rows)
 
 
