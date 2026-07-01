@@ -158,11 +158,20 @@ def poll():
     with _conn() as c:
         off = c.execute("SELECT value FROM meta WHERE key='tg_offset'").fetchone()
         offset = int(off[0]) if off else 0
-        upd = _tg("getUpdates", offset=offset, timeout=0, allowed_updates='["callback_query"]')
+        upd = _tg("getUpdates", offset=offset, timeout=0, allowed_updates='["callback_query","message"]')
         if not upd or not upd.get("ok"):
             return handled
         for u in upd["result"]:
             offset = max(offset, u["update_id"] + 1)
+            m = u.get("message")
+            if m and (m.get("text") or "").startswith("/"):    # slash-command → commands module
+                try:
+                    sys.path.insert(0, str(Path(__file__).resolve().parent))
+                    import commands
+                    commands.handle_message(m)
+                except Exception as e:
+                    print(f"[rem] cmd: {type(e).__name__}: {e}", file=sys.stderr)
+                continue
             cq = u.get("callback_query")
             if not cq:
                 continue
